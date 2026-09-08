@@ -15,7 +15,7 @@ export const EVIDENCE_SOURCES: EvidenceSource[] = [
             { label: 'R²', value: '0.699' },
             { label: 'Sample', value: '306 respondents' },
         ],
-        note: 'PLS-SEM path coefficients reported in the source study; not system prediction accuracy. Used here to justify why green packaging and sustainable materials are meaningful variables in the prototype — not converted into scores, probabilities, or accuracy claims.',
+        note: 'β = 0.662 is a PLS-SEM path coefficient, not a decision weight — it is not interpreted as "green packaging gets 66.2% weight," a purchase probability, or system prediction accuracy. Used here only to justify why green packaging and sustainable materials are meaningful constructs in the prototype, not to define the ranking weights. The study is cross-sectional and conducted in a single destination (n = 306 tourists), so generalizability is limited.',
     },
     {
         id: 'simaremare-edison-2025',

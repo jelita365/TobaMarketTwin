@@ -48,7 +48,7 @@ export default function ValidationPage() {
                                     <p className="text-xs text-charcoal/55 mt-0.5">{config.material} · {config.design}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-sm font-bold text-lakeblue">{config.humanScoreSummary?.overallAcceptance}/100</p>
+                                    <p className="text-sm font-bold text-lakeblue">{config.humanScoreSummary?.customerAcceptance}/100</p>
                                     <p className="text-[11px] text-charcoal/45">{config.humanScoreSummary?.count} respondents</p>
                                 </div>
                             </div>

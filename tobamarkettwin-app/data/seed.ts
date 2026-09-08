@@ -14,8 +14,8 @@ export const SEED_EXPERIMENTS: Experiment[] = [
             'Identify packaging concepts that balance perceived sustainability and customer acceptance.',
         status: 'Human Validation',
         options: {
-            materials: ['Recycled Kraft Paper', 'Bamboo Fiber', 'Laminated Plastic'],
-            designs: ['Lake Toba Minimal', 'Batak Gorga', 'Modern Ulos'],
+            materials: ['Recycled Kraft Paper', 'Bamboo Fiber', 'Conventional Laminated Plastic'],
+            designs: ['Minimal Lake Toba', 'Batak Gorga', 'Modern Ulos'],
             prices: [45000, 50000, 55000],
             storytelling: ['Short Product Story', 'Cultural Story'],
             languages: ['Indonesian', 'Indonesian + English'],

@@ -5,12 +5,18 @@ import { configSeed } from './configurations';
 const SUSTAINABLE_MATERIALS: Record<string, number> = {
     'Recycled Kraft Paper': 0.9,
     'Bamboo Fiber': 0.8,
-    'Laminated Plastic': -0.9,
+    'Conventional Laminated Plastic': -0.9,
 };
 
 /**
- * Attribute-based "Prototype Sustainability Index" — not a full LCA.
- * Deterministic per configuration so results are stable across reloads.
+ * Prototype Sustainability Index — attribute-based, NOT a full Life Cycle
+ * Assessment. Deterministic per configuration so results are stable across
+ * reloads. Independent from Customer Twin's perceivedSustainability signal
+ * to avoid double-counting the same construct in the decision model.
+ *
+ * S_i = (Recyclability + Reusability + RecycledContent + MaterialEfficiency
+ *        + LocalMaterialPotential) / 5
+ * S_100 = ((S_i - 1) / 4) x 100
  */
 export function assessSustainability(config: ProductConfiguration): SustainabilityAssessment {
     const rng = seededRandom(configSeed(config.id + ':sustain'));
@@ -27,9 +33,9 @@ export function assessSustainability(config: ProductConfiguration): Sustainabili
         5
     );
 
-    const avg =
+    const S_i =
         (recyclability + reusability + recycledContent + materialEfficiency + localMaterialPotential) / 5;
-    const overallScore = Math.round((avg / 5) * 100);
+    const overallScore = Math.round(((S_i - 1) / 4) * 100);
 
     return {
         recyclability: round1(recyclability),

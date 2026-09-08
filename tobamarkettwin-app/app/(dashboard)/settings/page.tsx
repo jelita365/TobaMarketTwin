@@ -4,78 +4,72 @@ import { useState } from 'react';
 import { Card, CardHeader } from '@/components/Card';
 import { DemoLabel } from '@/components/DemoLabel';
 import { useStore } from '@/lib/store';
+import { DEFAULT_WEIGHTS } from '@/lib/decision';
 import { RecommendationWeights } from '@/types';
-
-const LABELS: Record<keyof RecommendationWeights, string> = {
-    customerAcceptance: 'Customer Acceptance',
-    sustainability: 'Sustainability',
-    calibrationConfidence: 'Calibration Confidence',
-    priceAcceptance: 'Price Acceptance',
-};
 
 export default function SettingsPage() {
     const { weights, updateWeights } = useStore();
-    const [local, setLocal] = useState(weights);
+    const [local, setLocal] = useState<RecommendationWeights>(weights);
 
-    const total = Object.values(local).reduce((a, b) => a + b, 0);
+    const acceptancePct = Math.round(local.acceptanceWeight * 100);
+    const sustainabilityPct = 100 - acceptancePct;
 
-    const handleChange = (key: keyof RecommendationWeights, value: number) => {
-        setLocal((prev) => ({ ...prev, [key]: value / 100 }));
+    const handleChange = (value: number) => {
+        setLocal({ acceptanceWeight: value / 100, sustainabilityWeight: (100 - value) / 100 });
     };
 
     const handleSave = () => updateWeights(local);
     const handleReset = () => {
-        const defaults: RecommendationWeights = {
-            customerAcceptance: 0.4,
-            sustainability: 0.3,
-            calibrationConfidence: 0.2,
-            priceAcceptance: 0.1,
-        };
-        setLocal(defaults);
-        updateWeights(defaults);
+        setLocal(DEFAULT_WEIGHTS);
+        updateWeights(DEFAULT_WEIGHTS);
     };
 
     return (
         <div className="max-w-2xl">
             <h1 className="text-2xl font-bold text-navy tracking-tight mb-1">Settings</h1>
-            <p className="text-sm text-charcoal/60 mb-6">Configure the prototype decision rule used by the Recommendation engine.</p>
+            <p className="text-sm text-charcoal/60 mb-6">Configure the Prototype Balanced Decision Rule used by the recommendation engine.</p>
 
             <Card>
                 <CardHeader
-                    title="Recommendation Weights"
-                    subtitle="The weighting can be changed according to MSME priorities and validated research design."
+                    title="Decision Rule Weights"
+                    subtitle="The weighting can be changed according to MSME priorities and validated research design. Not scientifically optimal weighting."
                     action={<DemoLabel kind="demo">Prototype decision rule</DemoLabel>}
                 />
 
-                <div className="space-y-5">
-                    {(Object.keys(LABELS) as (keyof RecommendationWeights)[]).map((key) => (
-                        <div key={key}>
-                            <div className="flex items-center justify-between text-xs mb-1.5">
-                                <span className="font-semibold text-charcoal">{LABELS[key]}</span>
-                                <span className="font-bold text-navy">{Math.round(local[key] * 100)}%</span>
-                            </div>
-                            <input
-                                type="range"
-                                min={0}
-                                max={100}
-                                value={Math.round(local[key] * 100)}
-                                onChange={(e) => handleChange(key, Number(e.target.value))}
-                                className="w-full accent-[#176B87]"
-                            />
-                        </div>
-                    ))}
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-charcoal">Customer Acceptance</span>
+                        <span className="font-bold text-navy">{acceptancePct}%</span>
+                    </div>
+                    <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={acceptancePct}
+                        onChange={(e) => handleChange(Number(e.target.value))}
+                        className="w-full accent-[#176B87]"
+                    />
+                    <div className="flex items-center justify-between text-xs pt-3">
+                        <span className="font-semibold text-charcoal">Sustainability</span>
+                        <span className="font-bold text-green">{sustainabilityPct}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-black/[0.06] overflow-hidden">
+                        <div className="h-full bg-green" style={{ width: `${sustainabilityPct}%` }} />
+                    </div>
                 </div>
 
-                <div className={`mt-4 text-xs rounded-lg px-3 py-2 ${Math.round(total * 100) === 100 ? 'bg-green/10 text-green' : 'bg-gold/15 text-[#8a6412]'}`}>
-                    Total: {Math.round(total * 100)}% {Math.round(total * 100) !== 100 && '(should sum to 100%)'}
-                </div>
+                <p className="text-[11px] text-charcoal/45 mt-4 leading-relaxed">
+                    R_i = acceptanceWeight × CalibratedCustomerAcceptance_i + sustainabilityWeight × Sustainability_i.
+                    Default is the Balanced scenario (50/50). See Sensitivity Analysis for how rankings shift under
+                    Sustainability Priority (40/60) and Market Priority (60/40).
+                </p>
 
                 <div className="flex items-center gap-2 mt-5">
                     <button onClick={handleSave} className="rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold px-4 py-2.5 text-sm transition">
                         Save Weights
                     </button>
                     <button onClick={handleReset} className="rounded-xl border border-black/10 text-charcoal/70 font-semibold px-4 py-2.5 text-sm hover:border-black/20 transition">
-                        Reset to Default
+                        Reset to Balanced (50/50)
                     </button>
                 </div>
             </Card>

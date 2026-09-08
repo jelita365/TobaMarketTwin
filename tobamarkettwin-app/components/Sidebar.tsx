@@ -11,6 +11,9 @@ import {
     Sparkles,
     BookOpenCheck,
     Settings,
+    Network,
+    Microscope,
+    PlayCircle,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { cn } from '@/lib/utils';
@@ -23,6 +26,9 @@ const NAV = [
     { href: '/validation', label: 'Validation', icon: ClipboardCheck },
     { href: '/recommendations', label: 'Recommendations', icon: Sparkles },
     { href: '/evidence', label: 'Evidence', icon: BookOpenCheck },
+    { href: '/architecture', label: 'Architecture', icon: Network },
+    { href: '/research', label: 'Research Mode', icon: Microscope },
+    { href: '/presentation', label: 'Presentation Mode', icon: PlayCircle },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

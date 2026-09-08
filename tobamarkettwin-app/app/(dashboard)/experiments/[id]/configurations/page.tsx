@@ -94,8 +94,8 @@ export default function ConfigurationsPage({ params }: PageProps<'/experiments/[
                                 </div>
                                 {c.aiEvaluation && (
                                     <div className="mt-3 pt-3 border-t border-black/[0.05] flex items-center justify-between text-xs">
-                                        <span className="text-charcoal/50">AI Acceptance</span>
-                                        <span className="font-bold text-teal">{c.aiEvaluation.overallAcceptance.toFixed(1)} / 5</span>
+                                        <span className="text-charcoal/50">Customer Acceptance</span>
+                                        <span className="font-bold text-teal">{c.aiEvaluation.customerAcceptance.toFixed(1)} / 5</span>
                                     </div>
                                 )}
                             </Link>

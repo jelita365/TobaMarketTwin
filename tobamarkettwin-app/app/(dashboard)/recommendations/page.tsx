@@ -41,7 +41,7 @@ export default function RecommendationsPage() {
                                         <Card key={rec.configurationId}>
                                             <div className="flex items-center justify-between mb-1.5">
                                                 <span className="text-sm font-extrabold text-navy">#{rec.rank}</span>
-                                                <span className="text-xs font-bold text-teal">{rec.score} pts</span>
+                                                <span className="text-xs font-bold text-teal">{rec.decisionScore} pts</span>
                                             </div>
                                             <p className="text-sm font-bold text-navy">{config.id}</p>
                                             <p className="text-xs text-charcoal/55">{config.material} · {formatRupiah(config.price)}</p>

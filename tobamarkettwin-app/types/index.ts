@@ -35,17 +35,25 @@ export interface Experiment {
     createdAt: string;
 }
 
+/**
+ * Output of CustomerTwinEngine.evaluate(). Perceived Sustainability is kept
+ * as an independent perception signal — it is NOT folded into
+ * `customerAcceptance` (see lib/customerTwin/acceptance.ts) and is NOT
+ * reused inside the Sustainability Index (see lib/sustainability), to avoid
+ * double-counting the same underlying construct in the decision model.
+ */
 export interface AIEvaluation {
     purchaseIntention: number;
     packagingAttractiveness: number;
     priceAcceptance: number;
     culturalAuthenticity: number;
     perceivedSustainability: number;
-    overallAcceptance: number;
+    customerAcceptance: number; // 1-5, PI+PA+PriceAcc+CulturalAuth / 4 — excludes perceivedSustainability
     decision: Decision;
     rationale: string;
     concern: string;
     evidenceSufficiency: EvidenceSufficiency;
+    mainUncertainty: string;
 }
 
 export interface SustainabilityAssessment {
@@ -96,9 +104,13 @@ export interface HumanEvaluationSummary {
     avgPriceAcceptance: number;
     avgCulturalAuthenticity: number;
     avgPerceivedSustainability: number;
-    overallAcceptance: number; // 0-100
+    customerAcceptance: number; // 0-100, same 4-dimension construct as AIEvaluation.customerAcceptance
     buyRate: number; // %
 }
+
+export const MIN_RESPONSES_FOR_CALIBRATION = 10;
+
+export type CalibrationStatus = 'PENDING' | 'AVAILABLE';
 
 export interface CalibrationResult {
     configurationId: string;
@@ -106,6 +118,42 @@ export interface CalibrationResult {
     mae: number;
     decisionAgreement: number; // %
     stability: number;
+    respondentCount: number;
+}
+
+export interface ConstraintSettings {
+    maxPrice: number | null;
+    minSustainability: number | null; // 0-100
+    preferredMaterials: string[]; // empty = no preference
+    requireCulturalStory: boolean;
+}
+
+export interface DecisionScenario {
+    id: 'balanced' | 'sustainability-priority' | 'market-priority';
+    label: string;
+    acceptanceWeight: number;
+    sustainabilityWeight: number;
+}
+
+export interface DecisionResult {
+    configurationId: string;
+    customerAcceptance: number; // 0-100, calibrated if available else Customer Twin only
+    sustainability: number; // 0-100
+    decisionScore: number; // 0-100
+    usesCalibratedAcceptance: boolean;
+}
+
+export interface DecisionTrace {
+    configurationId: string;
+    customerAcceptance: number;
+    sustainability: number;
+    decisionScore: number;
+    evidenceSufficiency: EvidenceSufficiency;
+    strengths: string[];
+    tradeoffs: string[];
+    nextAction: 'Physical Prototype' | 'Human Test' | 'Collect More Evidence';
+    confidenceStatus: 'High Evidence' | 'Medium Evidence' | 'Low Evidence';
+    confidenceReason: string;
 }
 
 export interface CustomerPersona {
@@ -120,24 +168,14 @@ export interface CustomerPersona {
     preferredCharacteristics: string[];
 }
 
+/** Prototype Balanced Decision Rule weights — NOT empirically validated. */
 export interface RecommendationWeights {
-    customerAcceptance: number;
-    sustainability: number;
-    calibrationConfidence: number;
-    priceAcceptance: number;
+    acceptanceWeight: number;
+    sustainabilityWeight: number;
 }
 
-export interface Recommendation {
+export interface Recommendation extends DecisionTrace {
     rank: number;
-    configurationId: string;
-    score: number;
-    sustainability: number;
-    customerAcceptance: number;
-    priceAcceptance: number;
-    calibrationConfidence: number;
-    reason: string;
-    concern: string;
-    nextAction: string;
 }
 
 export interface EvidenceSource {

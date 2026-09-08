@@ -5,17 +5,30 @@ import { Card, CardHeader } from '@/components/Card';
 import { DemoLabel } from '@/components/DemoLabel';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Funnel } from '@/components/Funnel';
-import { useStore } from '@/lib/store';
-
-const KPIS = [
-    { label: 'Active Experiments', value: 3 },
-    { label: 'Concepts Screened', value: 108 },
-    { label: 'Shortlisted Concepts', value: 6 },
-    { label: 'Human Validation', value: 24 },
-];
+import { useStore, MAIN_EXPERIMENT_ID } from '@/lib/store';
+import { applyConstraints } from '@/lib/constraints';
+import { MIN_RESPONSES_FOR_CALIBRATION } from '@/types';
 
 export default function DashboardPage() {
-    const { experiments } = useStore();
+    const { experiments, getConfigurations, getConstraints, getHumanEvaluations } = useStore();
+
+    const main = experiments.find((e) => e.id === MAIN_EXPERIMENT_ID) ?? experiments[0];
+    const configs = main ? getConfigurations(main.id) : [];
+    const constraints = main ? getConstraints(main.id) : null;
+    const feasible = constraints ? applyConstraints(configs, constraints) : configs;
+    const shortlisted = configs.filter((c) => c.status === 'Shortlisted' || c.status === 'Validated');
+    const humanResponseCount = configs.reduce((sum, c) => sum + getHumanEvaluations(c.id).length, 0);
+    const calibrationEligible = configs.filter((c) => getHumanEvaluations(c.id).length >= MIN_RESPONSES_FOR_CALIBRATION).length;
+    const calibrationStatus = calibrationEligible >= 2 ? 'Available' : 'Pending';
+    const priorityConcepts = configs.filter((c) => c.aiEvaluation && c.sustainability).length > 0 ? Math.min(3, shortlisted.length) : 0;
+
+    const kpis = [
+        { label: 'Configurations', value: configs.length || main?.totalConfigurations || 0 },
+        { label: 'Feasible (Constraints)', value: feasible.length },
+        { label: 'Human Validation', value: humanResponseCount > 0 ? `${humanResponseCount} Responses` : 'Not Available' },
+        { label: 'Calibration', value: calibrationStatus },
+        { label: 'Priority Concepts', value: priorityConcepts },
+    ];
 
     return (
         <div className="max-w-6xl">
@@ -25,14 +38,17 @@ export default function DashboardPage() {
                     <p className="text-sm text-charcoal/60 mt-1">
                         AI-assisted product concept screening for sustainable Toba MSMEs
                     </p>
+                    <p className="text-xs font-semibold text-teal mt-2">
+                        AI menyaring. Manusia memvalidasi. UMKM memutuskan.
+                    </p>
                 </div>
                 <DemoLabel kind="demo" />
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {KPIS.map((kpi) => (
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                {kpis.map((kpi) => (
                     <Card key={kpi.label} className="text-center">
-                        <p className="text-3xl font-extrabold text-navy">{kpi.value}</p>
+                        <p className="text-2xl font-extrabold text-navy">{kpi.value}</p>
                         <p className="text-xs text-charcoal/60 mt-1">{kpi.label}</p>
                     </Card>
                 ))}
@@ -76,13 +92,13 @@ export default function DashboardPage() {
                 />
                 <Funnel
                     steps={[
-                        { label: 'Concepts', value: 108 },
-                        { label: 'AI Screening', value: '→' },
-                        { label: 'Shortlisted', value: 12 },
-                        { label: 'Human Evaluations', value: 24 },
-                        { label: 'Human Calibration', value: '→' },
-                        { label: 'Green Acceptance Sweet Spot', value: '→' },
-                        { label: 'Recommended', value: 3 },
+                        { label: 'Concepts', value: configs.length || main?.totalConfigurations || 0 },
+                        { label: 'Constraint Filter', value: feasible.length },
+                        { label: 'Customer Twin', value: '→' },
+                        { label: 'Human Validation', value: humanResponseCount },
+                        { label: 'Calibration', value: calibrationStatus },
+                        { label: 'Sustainability', value: '→' },
+                        { label: 'Decision', value: priorityConcepts },
                     ]}
                 />
             </Card>

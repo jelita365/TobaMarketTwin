@@ -46,6 +46,9 @@ export default function CustomerTwinPage({ params }: PageProps<'/experiments/[id
                         <CardHeader title="Customer Twin Profile" subtitle={persona.name} />
                         <DemoLabel kind="illustrative" className="mb-3">Illustrative Persona — Prototype</DemoLabel>
                         <p className="text-xs text-charcoal/65 leading-relaxed mb-3">{persona.description}</p>
+                        <p className="text-[10.5px] text-charcoal/45 leading-relaxed mb-3">
+                            Illustrative persona — final segments require primary customer research.
+                        </p>
                         <dl className="space-y-3 text-xs">
                             <div>
                                 <dt className="text-charcoal/45 mb-1">Age</dt>
@@ -100,8 +103,11 @@ export default function CustomerTwinPage({ params }: PageProps<'/experiments/[id
                                         <ScoreBar label="Price Acceptance" value={config.aiEvaluation.priceAcceptance} />
                                         <ScoreBar label="Cultural Authenticity" value={config.aiEvaluation.culturalAuthenticity} />
                                         <ScoreBar label="Perceived Sustainability" value={config.aiEvaluation.perceivedSustainability} />
-                                        <ScoreBar label="Overall Acceptance" value={config.aiEvaluation.overallAcceptance} />
+                                        <ScoreBar label="Customer Acceptance" value={config.aiEvaluation.customerAcceptance} />
                                     </div>
+                                    <p className="text-[10.5px] text-charcoal/40 -mt-3 mb-4">
+                                        Customer Acceptance = (Purchase Intention + Packaging Attractiveness + Price Acceptance + Cultural Authenticity) / 4. Perceived Sustainability is tracked separately to avoid double-counting against the Sustainability Index.
+                                    </p>
 
                                     <div className="flex items-center gap-2 mb-4">
                                         <DecisionBadge decision={config.aiEvaluation.decision} />
@@ -113,10 +119,30 @@ export default function CustomerTwinPage({ params }: PageProps<'/experiments/[id
                                     <div className="space-y-2 text-xs">
                                         <p><span className="font-semibold text-charcoal">Reason: </span><span className="text-charcoal/65">{config.aiEvaluation.rationale}</span></p>
                                         <p><span className="font-semibold text-charcoal">Concern: </span><span className="text-charcoal/65">{config.aiEvaluation.concern}</span></p>
+                                        <p><span className="font-semibold text-charcoal">Main Uncertainty: </span><span className="text-charcoal/65">{config.aiEvaluation.mainUncertainty}</span></p>
                                     </div>
                                 </>
                             )}
                         </Card>
+
+                        {config?.aiEvaluation && (
+                            <Card>
+                                <CardHeader title="Evidence Layer" subtitle="What this evaluation is and isn't grounded in" />
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] mb-4">
+                                    <EvidenceTag label="Persona information" />
+                                    <EvidenceTag label="Product attributes" />
+                                    <EvidenceTag label="Sustainable packaging literature" />
+                                    <EvidenceTag label="User-provided product evidence" />
+                                </div>
+                                <div className="flex items-center justify-between text-xs rounded-lg bg-gold/10 px-3 py-2">
+                                    <span className="text-charcoal/60">Evidence Sufficiency</span>
+                                    <span className="font-bold text-[#8a6412]">{config.aiEvaluation.evidenceSufficiency}</span>
+                                </div>
+                                <p className="text-[11px] text-charcoal/50 mt-2">
+                                    <span className="font-semibold text-charcoal/70">Main Uncertainty: </span>{config.aiEvaluation.mainUncertainty}
+                                </p>
+                            </Card>
+                        )}
 
                         <Card>
                             <CardHeader title="Customer Twin Architecture" subtitle="Simplified conceptual pipeline" />
@@ -134,6 +160,10 @@ export default function CustomerTwinPage({ params }: PageProps<'/experiments/[id
             )}
         </div>
     );
+}
+
+function EvidenceTag({ label }: { label: string }) {
+    return <span className="rounded-lg bg-teal/10 text-teal px-2 py-1.5 text-center">{label}</span>;
 }
 
 function DecisionBadge({ decision }: { decision: 'BUY' | 'CONSIDER' | 'REJECT' }) {

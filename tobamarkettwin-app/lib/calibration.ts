@@ -1,6 +1,6 @@
-import { AIEvaluation, CalibrationResult, HumanEvaluation } from '@/types';
+import { AIEvaluation, CalibrationResult, Decision, HumanEvaluation, HumanEvaluationSummary, MIN_RESPONSES_FOR_CALIBRATION } from '@/types';
 
-export const MIN_RESPONSES_FOR_CALIBRATION = 10;
+export { MIN_RESPONSES_FOR_CALIBRATION };
 
 /** Spearman rank correlation between two equal-length numeric arrays. */
 function spearman(a: number[], b: number[]): number {
@@ -20,59 +20,67 @@ function spearman(a: number[], b: number[]): number {
     return 1 - (6 * dSquaredSum) / (n * (n ** 2 - 1));
 }
 
+function decisionToBuyProbability(decision: Decision): number {
+    if (decision === 'BUY') return 1;
+    if (decision === 'CONSIDER') return 0.5;
+    return 0;
+}
+
 /**
- * Compares Customer Twin prediction against aggregated human evaluation
- * for one configuration. Requires MIN_RESPONSES_FOR_CALIBRATION responses.
+ * Cross-configuration calibration: measures whether Customer Twin and real
+ * human respondents rank a SET of configurations similarly (Spearman ρ),
+ * how far apart their acceptance scores are on average (MAE), and how often
+ * their BUY/CONSIDER/REJECT decisions agree.
+ *
+ * Requires at least 2 configurations, each with >= MIN_RESPONSES_FOR_CALIBRATION
+ * human respondents. Returns undefined (never fabricated values) when that
+ * bar isn't met — callers must render "Human calibration belum tersedia."
  */
 export function calculateCalibration(
-    configurationId: string,
+    entries: { configurationId: string; aiEvaluation: AIEvaluation; humanEvaluations: HumanEvaluation[] }[]
+): CalibrationResult[] {
+    const eligible = entries.filter((e) => e.humanEvaluations.length >= MIN_RESPONSES_FOR_CALIBRATION);
+    if (eligible.length < 2) return [];
+
+    const aiScores = eligible.map((e) => e.aiEvaluation.customerAcceptance);
+    const humanScores = eligible.map((e) => average(e.humanEvaluations.map((h) => humanAcceptance(h))));
+    const rho = spearman(aiScores, humanScores);
+
+    return eligible.map((e, i) => {
+        const humanAvg = humanScores[i];
+        const mae = Math.abs(aiScores[i] - humanAvg);
+
+        const humanBuyRate = e.humanEvaluations.filter((h) => h.decision === 'BUY').length / e.humanEvaluations.length;
+        const aiBuyProbability = decisionToBuyProbability(e.aiEvaluation.decision);
+        const decisionAgreement = Math.round((1 - Math.abs(aiBuyProbability - humanBuyRate)) * 100);
+
+        const stability = Math.max(0, Math.min(1, 1 - mae / 4));
+
+        return {
+            configurationId: e.configurationId,
+            spearmanRho: round2(rho),
+            mae: round2(mae),
+            decisionAgreement,
+            stability: round2(stability),
+            respondentCount: e.humanEvaluations.length,
+        };
+    });
+}
+
+function humanAcceptance(h: HumanEvaluation): number {
+    return (h.purchaseIntention + h.packagingAttractiveness + h.priceAcceptance + h.culturalAuthenticity) / 4;
+}
+
+/** Blends Customer Twin acceptance with real human acceptance once calibration data exists. */
+export function calibratedAcceptance(
     aiEvaluation: AIEvaluation,
-    humanEvaluations: HumanEvaluation[]
-): CalibrationResult | undefined {
-    if (humanEvaluations.length < MIN_RESPONSES_FOR_CALIBRATION) return undefined;
-
-    const aiVector = [
-        aiEvaluation.purchaseIntention,
-        aiEvaluation.packagingAttractiveness,
-        aiEvaluation.priceAcceptance,
-        aiEvaluation.culturalAuthenticity,
-        aiEvaluation.perceivedSustainability,
-    ];
-
-    const humanAverages = {
-        purchaseIntention: average(humanEvaluations.map((e) => e.purchaseIntention)),
-        packagingAttractiveness: average(humanEvaluations.map((e) => e.packagingAttractiveness)),
-        priceAcceptance: average(humanEvaluations.map((e) => e.priceAcceptance)),
-        culturalAuthenticity: average(humanEvaluations.map((e) => e.culturalAuthenticity)),
-        perceivedSustainability: average(humanEvaluations.map((e) => e.perceivedSustainability)),
-    };
-    const humanVector = [
-        humanAverages.purchaseIntention,
-        humanAverages.packagingAttractiveness,
-        humanAverages.priceAcceptance,
-        humanAverages.culturalAuthenticity,
-        humanAverages.perceivedSustainability,
-    ];
-
-    const rho = spearman(aiVector, humanVector);
-    const mae = average(aiVector.map((v, i) => Math.abs(v - humanVector[i])));
-
-    const humanOverallDecisionBuyRate =
-        humanEvaluations.filter((e) => e.decision === 'BUY').length / humanEvaluations.length;
-    const aiSaysBuy = aiEvaluation.decision === 'BUY' ? 1 : 0;
-    const decisionAgreement = Math.round(
-        (1 - Math.abs(aiSaysBuy - humanOverallDecisionBuyRate)) * 100
-    );
-
-    const stability = Math.max(0, Math.min(1, 1 - mae / 4));
-
-    return {
-        configurationId,
-        spearmanRho: round2(rho),
-        mae: round2(mae),
-        decisionAgreement,
-        stability: round2(stability),
-    };
+    humanSummary: HumanEvaluationSummary | undefined
+): { value100: number; usesCalibratedAcceptance: boolean } {
+    const aiAcceptance100 = ((aiEvaluation.customerAcceptance - 1) / 4) * 100;
+    if (!humanSummary || humanSummary.count < MIN_RESPONSES_FOR_CALIBRATION) {
+        return { value100: Math.round(aiAcceptance100), usesCalibratedAcceptance: false };
+    }
+    return { value100: Math.round(humanSummary.customerAcceptance), usesCalibratedAcceptance: true };
 }
 
 function average(arr: number[]) {

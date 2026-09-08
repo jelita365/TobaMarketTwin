@@ -6,10 +6,19 @@ const SUSTAINABLE_MATERIALS = ['Recycled Kraft Paper', 'Bamboo Fiber'];
 const CULTURAL_DESIGNS = ['Batak Gorga', 'Modern Ulos'];
 
 /**
- * Deterministic mock scoring engine — the "Simulated Customer Twin".
- * Not a live LLM call. Swap this module for a real API later without
- * touching callers, since it only depends on ProductConfiguration in/out.
+ * CustomerTwinEngine — deterministic mock scoring ("Simulated Customer Twin").
+ * Not a live LLM call. The `evaluate` shape below is the abstraction boundary:
+ * a real multimodal LLM-backed engine can later implement the same signature
+ * without touching callers.
  */
+export interface CustomerTwinEngine {
+    evaluate(config: ProductConfiguration): AIEvaluation;
+}
+
+export const mockCustomerTwinEngine: CustomerTwinEngine = {
+    evaluate: evaluateWithCustomerTwin,
+};
+
 export function evaluateWithCustomerTwin(config: ProductConfiguration): AIEvaluation {
     const rng = seededRandom(configSeed(config.id + ':ai'));
     const jitter = () => (rng() - 0.5) * 0.6;
@@ -28,35 +37,35 @@ export function evaluateWithCustomerTwin(config: ProductConfiguration): AIEvalua
         1,
         5
     );
-    const priceAcceptance = clamp(
-        3.2 - (config.price - 45000) / 25000 + jitter(),
-        1,
-        5
-    );
+    const priceAcceptance = clamp(3.2 - (config.price - 45000) / 25000 + jitter(), 1, 5);
     const culturalAuthenticity = clamp(
         base + (config.design === 'Batak Gorga' ? 0.4 : 0) + (config.storytelling === 'Cultural Story' ? 0.3 : 0) + jitter(),
         1,
         5
     );
+    // Perceived Sustainability is an independent perception signal, NOT
+    // reused inside customerAcceptance or the Sustainability Index — see
+    // types/index.ts AIEvaluation doc comment.
     const perceivedSustainability = clamp(
         base + (SUSTAINABLE_MATERIALS.includes(config.material) ? 0.5 : -0.4) + jitter(),
         1,
         5
     );
 
-    const overallAcceptance = clamp(
-        (purchaseIntention + packagingAttractiveness + priceAcceptance + culturalAuthenticity + perceivedSustainability) / 5,
+    // Prototype Customer Acceptance Score: PI + PA + PriceAcc + CulturalAuth / 4.
+    const customerAcceptance = clamp(
+        (purchaseIntention + packagingAttractiveness + priceAcceptance + culturalAuthenticity) / 4,
         1,
         5
     );
 
     let decision: Decision = 'CONSIDER';
-    if (overallAcceptance >= 4.0) decision = 'BUY';
-    else if (overallAcceptance < 3.0) decision = 'REJECT';
+    if (customerAcceptance >= 4.0) decision = 'BUY';
+    else if (customerAcceptance < 3.0) decision = 'REJECT';
 
-    const rationale = buildRationale(config, overallAcceptance);
+    const rationale = buildRationale(config, customerAcceptance);
     const concern = buildConcern(config, priceAcceptance);
-    const evidenceSufficiency = overallAcceptance >= 4 || overallAcceptance < 2.5 ? 'MEDIUM' : 'LOW';
+    const evidenceSufficiency = customerAcceptance >= 4 || customerAcceptance < 2.5 ? 'MEDIUM' : 'LOW';
 
     return {
         purchaseIntention: round1(purchaseIntention),
@@ -64,11 +73,12 @@ export function evaluateWithCustomerTwin(config: ProductConfiguration): AIEvalua
         priceAcceptance: round1(priceAcceptance),
         culturalAuthenticity: round1(culturalAuthenticity),
         perceivedSustainability: round1(perceivedSustainability),
-        overallAcceptance: round1(overallAcceptance),
+        customerAcceptance: round1(customerAcceptance),
         decision,
         rationale,
         concern,
         evidenceSufficiency,
+        mainUncertainty: 'Actual willingness-to-pay has not yet been empirically measured.',
     };
 }
 
@@ -79,7 +89,7 @@ function buildRationale(config: ProductConfiguration, score: number): string {
     if (score >= 3.0) {
         return `Moderate simulated appeal; some attributes (design, material, or price) balance each other out.`;
     }
-    return `Simulated appeal is limited, likely due to price level or weaker cultural/sustainability signal.`;
+    return `Simulated appeal is limited, likely due to price level or weaker cultural signal.`;
 }
 
 function buildConcern(config: ProductConfiguration, priceAcceptance: number): string {

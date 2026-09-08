@@ -1,22 +1,34 @@
 'use client';
 
-import { use } from 'react';
+import { use, useRef } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader } from '@/components/Card';
 import { DemoLabel } from '@/components/DemoLabel';
 import { useStore } from '@/lib/store';
 import { formatRupiah } from '@/lib/utils';
+import { parseHumanEvaluationCsv } from '@/lib/csv';
 
 export default function HumanValidationPage({ params }: PageProps<'/experiments/[id]/human-validation'>) {
     const { id } = use(params);
-    const { getExperiment, getConfigurations, getHumanEvaluations, seedHumanEvaluations } = useStore();
+    const { getExperiment, getConfigurations, getHumanEvaluations, seedHumanEvaluations, importHumanEvaluations } = useStore();
     const experiment = getExperiment(id);
+    const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
     if (!experiment) return notFound();
 
     const configs = getConfigurations(id);
     const shortlisted = configs.filter((c) => c.status === 'Shortlisted' || c.status === 'Validated');
+
+    const handleCsvUpload = (configId: string, file: File) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const text = String(reader.result ?? '');
+            const rows = parseHumanEvaluationCsv(text, configId);
+            if (rows.length > 0) importHumanEvaluations(id, configId, rows);
+        };
+        reader.readAsText(file);
+    };
 
     return (
         <div className="max-w-6xl">
@@ -51,7 +63,7 @@ export default function HumanValidationPage({ params }: PageProps<'/experiments/
                                     <div className="flex items-center gap-3">
                                         {c.humanScoreSummary ? (
                                             <div className="text-right">
-                                                <p className="text-lg font-bold text-lakeblue">{c.humanScoreSummary.overallAcceptance}/100</p>
+                                                <p className="text-lg font-bold text-lakeblue">{c.humanScoreSummary.customerAcceptance}/100</p>
                                                 <p className="text-[11px] text-charcoal/50">{c.humanScoreSummary.count} respondents · {c.humanScoreSummary.buyRate}% BUY</p>
                                             </div>
                                         ) : (
@@ -67,6 +79,23 @@ export default function HumanValidationPage({ params }: PageProps<'/experiments/
                                     >
                                         Open Customer Evaluation Form
                                     </Link>
+                                    <button
+                                        onClick={() => fileInputs.current[c.id]?.click()}
+                                        className="text-xs font-semibold rounded-lg border border-navy/20 text-navy px-3 py-1.5 hover:bg-navy/5 transition"
+                                    >
+                                        Upload CSV
+                                    </button>
+                                    <input
+                                        ref={(el) => { fileInputs.current[c.id] = el; }}
+                                        type="file"
+                                        accept=".csv,text/csv"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleCsvUpload(c.id, file);
+                                            e.target.value = '';
+                                        }}
+                                    />
                                     {!c.humanScoreSummary && (
                                         <button
                                             onClick={() => seedHumanEvaluations(id, c.id, 24)}
@@ -76,6 +105,12 @@ export default function HumanValidationPage({ params }: PageProps<'/experiments/
                                         </button>
                                     )}
                                 </div>
+
+                                {!c.humanScoreSummary && (
+                                    <p className="text-[11px] text-charcoal/45 mt-3">
+                                        Human validation dataset belum tersedia. Upload a primary-data CSV or simulate illustrative respondents to preview the workflow.
+                                    </p>
+                                )}
 
                                 {evals.length > 0 && (
                                     <div className="mt-4 pt-4 border-t border-black/[0.05] overflow-x-auto">

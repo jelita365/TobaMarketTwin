@@ -1,21 +1,23 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Experiment, HumanEvaluation, ProductConfiguration, RecommendationWeights } from '@/types';
+import { ConstraintSettings, Experiment, HumanEvaluation, ProductConfiguration, RecommendationWeights } from '@/types';
 import { SEED_EXPERIMENTS, MAIN_EXPERIMENT_ID } from '@/data/seed';
 import { generateConfigurations } from './configurations';
 import { evaluateWithCustomerTwin } from './aiTwin';
 import { assessSustainability } from './sustainability';
 import { generateHumanEvaluations, summarizeHumanEvaluations } from './humanEvaluation';
-import { DEFAULT_WEIGHTS } from './recommendation';
+import { DEFAULT_WEIGHTS } from './decision';
+import { DEFAULT_CONSTRAINTS } from './constraints';
 
-const STORAGE_KEY = 'tobamarkettwin.v1';
+const STORAGE_KEY = 'tobamarkettwin.v2';
 
 interface StoreState {
     experiments: Experiment[];
     configurations: Record<string, ProductConfiguration[]>; // experimentId -> configs
     humanEvaluations: Record<string, HumanEvaluation[]>; // configurationId -> evaluations
     weights: RecommendationWeights;
+    constraints: Record<string, ConstraintSettings>; // experimentId -> constraints
 }
 
 function buildSeedState(): StoreState {
@@ -37,7 +39,7 @@ function buildSeedState(): StoreState {
         // Seed human validation + shortlist for experiments that have progressed far enough.
         if (exp.humanResponses > 0) {
             const shortlisted = [...configs]
-                .sort((a, b) => (b.aiEvaluation?.overallAcceptance ?? 0) - (a.aiEvaluation?.overallAcceptance ?? 0))
+                .sort((a, b) => (b.aiEvaluation?.customerAcceptance ?? 0) - (a.aiEvaluation?.customerAcceptance ?? 0))
                 .slice(0, exp.shortlistedConfigurations || 12);
 
             for (const cfg of shortlisted) {
@@ -54,7 +56,13 @@ function buildSeedState(): StoreState {
         configurations[exp.id] = configs;
     }
 
-    return { experiments: SEED_EXPERIMENTS, configurations, humanEvaluations, weights: DEFAULT_WEIGHTS };
+    return {
+        experiments: SEED_EXPERIMENTS,
+        configurations,
+        humanEvaluations,
+        weights: DEFAULT_WEIGHTS,
+        constraints: {},
+    };
 }
 
 function loadState(): StoreState {
@@ -67,7 +75,7 @@ function loadState(): StoreState {
             return seeded;
         }
         const parsed = JSON.parse(raw) as StoreState;
-        return { ...parsed, weights: parsed.weights ?? DEFAULT_WEIGHTS };
+        return { ...parsed, weights: parsed.weights ?? DEFAULT_WEIGHTS, constraints: parsed.constraints ?? {} };
     } catch {
         return buildSeedState();
     }
@@ -125,6 +133,18 @@ export function useStore() {
         [state]
     );
 
+    const getConstraints = useCallback(
+        (experimentId: string) => state.constraints[experimentId] ?? DEFAULT_CONSTRAINTS,
+        [state]
+    );
+
+    const updateConstraints = useCallback((experimentId: string, constraints: ConstraintSettings) => {
+        setState((prev) => ({
+            ...prev,
+            constraints: { ...prev.constraints, [experimentId]: constraints },
+        }));
+    }, []);
+
     const createExperiment = useCallback((experiment: Experiment) => {
         setState((prev) => ({
             ...prev,
@@ -163,7 +183,7 @@ export function useStore() {
             const shortlistCount = Math.max(1, Math.round(evaluated.length * 0.11));
             const shortlistIds = new Set(
                 [...evaluated]
-                    .sort((a, b) => (b.aiEvaluation?.overallAcceptance ?? 0) - (a.aiEvaluation?.overallAcceptance ?? 0))
+                    .sort((a, b) => (b.aiEvaluation?.customerAcceptance ?? 0) - (a.aiEvaluation?.customerAcceptance ?? 0))
                     .slice(0, shortlistCount)
                     .map((c) => c.id)
             );
@@ -188,6 +208,37 @@ export function useStore() {
             setState((prev) => {
                 const existing = prev.humanEvaluations[configId] ?? [];
                 const updatedEvals = [...existing, evaluation];
+                const summary = summarizeHumanEvaluations(updatedEvals);
+
+                const configs = (prev.configurations[experimentId] ?? []).map((c) =>
+                    c.id === configId ? { ...c, status: 'Validated' as const, humanScoreSummary: summary } : c
+                );
+
+                const totalResponses = Object.values({
+                    ...prev.humanEvaluations,
+                    [configId]: updatedEvals,
+                }).reduce((sum, arr) => sum + arr.length, 0);
+
+                return {
+                    ...prev,
+                    experiments: prev.experiments.map((e) =>
+                        e.id === experimentId
+                            ? { ...e, status: 'Human Validation', humanResponses: totalResponses }
+                            : e
+                    ),
+                    configurations: { ...prev.configurations, [experimentId]: configs },
+                    humanEvaluations: { ...prev.humanEvaluations, [configId]: updatedEvals },
+                };
+            });
+        },
+        []
+    );
+
+    const importHumanEvaluations = useCallback(
+        (experimentId: string, configId: string, rows: HumanEvaluation[]) => {
+            setState((prev) => {
+                const existing = prev.humanEvaluations[configId] ?? [];
+                const updatedEvals = [...existing, ...rows];
                 const summary = summarizeHumanEvaluations(updatedEvals);
 
                 const configs = (prev.configurations[experimentId] ?? []).map((c) =>
@@ -251,10 +302,13 @@ export function useStore() {
         getConfigurations,
         getConfiguration,
         getHumanEvaluations,
+        getConstraints,
+        updateConstraints,
         createExperiment,
         generateExperimentConfigurations,
         runCustomerTwinScreening,
         submitHumanEvaluation,
+        importHumanEvaluations,
         seedHumanEvaluations,
         markRecommendationReady,
         updateWeights,

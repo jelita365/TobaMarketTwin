@@ -61,10 +61,10 @@ export function generateHumanEvaluations(
         const culturalAuthenticity = clamp(Math.round(base + designBias * 1.2 + jitter()), 1, 5);
         const perceivedSustainability = clamp(Math.round(base + materialBias * 1.3 + jitter()), 1, 5);
 
-        const overall =
-            (purchaseIntention + packagingAttractiveness + priceAcceptance + culturalAuthenticity + perceivedSustainability) /
-            5;
-        const decision = decisionFromScore(overall);
+        // Decision uses the same 4-dimension Customer Acceptance construct as
+        // the Customer Twin — perceivedSustainability stays a separate signal.
+        const acceptance = (purchaseIntention + packagingAttractiveness + priceAcceptance + culturalAuthenticity) / 4;
+        const decision = decisionFromScore(acceptance);
         const commentPool = COMMENTS[decision];
         const comment = commentPool[Math.floor(rng() * commentPool.length)];
 
@@ -99,13 +99,11 @@ export function summarizeHumanEvaluations(evaluations: HumanEvaluation[]): Human
     const avgCulturalAuthenticity = avg('culturalAuthenticity');
     const avgPerceivedSustainability = avg('perceivedSustainability');
 
-    const overallAvg =
-        (avgPurchaseIntention +
-            avgPackagingAttractiveness +
-            avgPriceAcceptance +
-            avgCulturalAuthenticity +
-            avgPerceivedSustainability) /
-        5;
+    // Prototype Customer Acceptance Score — same 4-dimension construct as
+    // AIEvaluation.customerAcceptance; perceivedSustainability excluded to
+    // avoid double-counting against the separate Sustainability Index.
+    const acceptanceAvg =
+        (avgPurchaseIntention + avgPackagingAttractiveness + avgPriceAcceptance + avgCulturalAuthenticity) / 4;
 
     const buyCount = evaluations.filter((e) => e.decision === 'BUY').length;
 
@@ -116,7 +114,7 @@ export function summarizeHumanEvaluations(evaluations: HumanEvaluation[]): Human
         avgPriceAcceptance: round1(avgPriceAcceptance),
         avgCulturalAuthenticity: round1(avgCulturalAuthenticity),
         avgPerceivedSustainability: round1(avgPerceivedSustainability),
-        overallAcceptance: Math.round((overallAvg / 5) * 100),
+        customerAcceptance: Math.round(((acceptanceAvg - 1) / 4) * 100),
         buyRate: Math.round((buyCount / evaluations.length) * 100),
     };
 }

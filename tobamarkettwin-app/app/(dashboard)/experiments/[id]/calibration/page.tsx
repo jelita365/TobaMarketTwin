@@ -8,7 +8,8 @@ import {
 import { Card, CardHeader } from '@/components/Card';
 import { DemoLabel } from '@/components/DemoLabel';
 import { useStore } from '@/lib/store';
-import { calculateCalibration, MIN_RESPONSES_FOR_CALIBRATION } from '@/lib/calibration';
+import { calculateCalibration } from '@/lib/calibration';
+import { MIN_RESPONSES_FOR_CALIBRATION } from '@/types';
 
 export default function CalibrationPage({ params }: PageProps<'/experiments/[id]/calibration'>) {
     const { id } = use(params);
@@ -17,26 +18,32 @@ export default function CalibrationPage({ params }: PageProps<'/experiments/[id]
 
     if (!experiment) return notFound();
 
-    const configs = getConfigurations(id).filter((c) => c.aiEvaluation && c.humanScoreSummary);
+    const configs = getConfigurations(id).filter((c) => c.aiEvaluation);
+    const entries = configs.map((c) => ({
+        configurationId: c.id,
+        aiEvaluation: c.aiEvaluation!,
+        humanEvaluations: getHumanEvaluations(c.id),
+    }));
 
-    const points = configs
-        .map((c) => {
-            const evals = getHumanEvaluations(c.id);
-            const result = c.aiEvaluation && calculateCalibration(c.id, c.aiEvaluation, evals);
-            if (!result || !c.humanScoreSummary) return null;
-            return {
-                id: c.id,
-                aiScore: c.aiEvaluation!.overallAcceptance,
-                humanScore: (c.humanScoreSummary.overallAcceptance / 100) * 5,
-                result,
-            };
-        })
-        .filter((p): p is NonNullable<typeof p> => p !== null);
+    const results = calculateCalibration(entries);
+    const eligibleCount = entries.filter((e) => e.humanEvaluations.length >= MIN_RESPONSES_FOR_CALIBRATION).length;
 
-    const avgSpearman = average(points.map((p) => p.result.spearmanRho));
-    const avgMae = average(points.map((p) => p.result.mae));
-    const avgAgreement = average(points.map((p) => p.result.decisionAgreement));
-    const avgStability = average(points.map((p) => p.result.stability));
+    const points = results.map((r) => {
+        const config = configs.find((c) => c.id === r.configurationId)!;
+        const humanAvg =
+            config.humanScoreSummary != null ? ((config.humanScoreSummary.customerAcceptance / 100) * 4) + 1 : null;
+        return {
+            id: r.configurationId,
+            aiScore: config.aiEvaluation!.customerAcceptance,
+            humanScore: humanAvg,
+            result: r,
+        };
+    }).filter((p) => p.humanScore != null) as { id: string; aiScore: number; humanScore: number; result: (typeof results)[number] }[];
+
+    const avgSpearman = average(results.map((r) => r.spearmanRho));
+    const avgMae = average(results.map((r) => r.mae));
+    const avgAgreement = average(results.map((r) => r.decisionAgreement));
+    const avgStability = average(results.map((r) => r.stability));
 
     return (
         <div className="max-w-6xl">
@@ -47,23 +54,30 @@ export default function CalibrationPage({ params }: PageProps<'/experiments/[id]
                         Compares Customer Twin prediction against real customer evaluation.
                     </p>
                 </div>
-                <DemoLabel kind="illustrative">Illustrative Calibration Simulation</DemoLabel>
+                {results.length > 0 ? (
+                    <DemoLabel kind="illustrative">Illustrative Calibration Simulation</DemoLabel>
+                ) : (
+                    <span className="inline-flex items-center rounded-full border border-gold/30 bg-gold/15 text-[#8a6412] px-2.5 py-0.5 text-[11px] font-medium">
+                        PENDING
+                    </span>
+                )}
             </div>
 
-            {points.length === 0 ? (
+            {results.length === 0 ? (
                 <Card className="text-center py-14">
                     <p className="text-sm text-charcoal/60">Human calibration belum tersedia.</p>
-                    <p className="text-xs text-charcoal/45 mt-1">
-                        Minimal {MIN_RESPONSES_FOR_CALIBRATION} evaluasi diperlukan per konfigurasi untuk menjalankan simulasi calibration.
+                    <p className="text-xs text-charcoal/45 mt-2 max-w-md mx-auto leading-relaxed">
+                        Minimal {MIN_RESPONSES_FOR_CALIBRATION} evaluasi per konfigurasi dan minimal 2 konfigurasi dengan data manusia
+                        diperlukan untuk menjalankan kalkulasi kalibrasi. Saat ini {eligibleCount} konfigurasi memenuhi ambang batas.
                     </p>
                 </Card>
             ) : (
                 <>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <MetricCard label="Spearman ρ" value={avgSpearman.toFixed(2)} interpretation="High rank alignment" />
-                        <MetricCard label="MAE" value={avgMae.toFixed(2)} interpretation="Low average error" />
-                        <MetricCard label="Decision Agreement" value={`${Math.round(avgAgreement)}%`} interpretation="High decision consistency" />
-                        <MetricCard label="Stability" value={avgStability.toFixed(2)} interpretation="Consistent across responses" />
+                        <MetricCard label="Spearman ρ" value={avgSpearman.toFixed(2)} interpretation="Rank alignment across configurations" />
+                        <MetricCard label="MAE" value={avgMae.toFixed(2)} interpretation="Average absolute score difference" />
+                        <MetricCard label="Decision Agreement" value={`${Math.round(avgAgreement)}%`} interpretation="BUY/CONSIDER/REJECT agreement" />
+                        <MetricCard label="Stability" value={avgStability.toFixed(2)} interpretation="1 − normalized MAE" />
                     </div>
 
                     <Card className="mb-6">
@@ -91,6 +105,7 @@ export default function CalibrationPage({ params }: PageProps<'/experiments/[id]
                                                 <p className="font-bold text-navy">{p.id}</p>
                                                 <p>AI: {p.aiScore.toFixed(1)}</p>
                                                 <p>Human: {p.humanScore.toFixed(1)}</p>
+                                                <p className="text-charcoal/50 mt-1">n = {p.result.respondentCount}</p>
                                             </div>
                                         );
                                     }}
@@ -111,14 +126,15 @@ export default function CalibrationPage({ params }: PageProps<'/experiments/[id]
                                 </tr>
                             </thead>
                             <tbody className="text-charcoal/75">
-                                <Row metric="Spearman ρ" value={avgSpearman.toFixed(2)} interp="High rank alignment" />
-                                <Row metric="MAE" value={avgMae.toFixed(2)} interp="Low average error" />
-                                <Row metric="Decision Agreement" value={`${Math.round(avgAgreement)}%`} interp="High decision consistency" />
-                                <Row metric="Stability" value={avgStability.toFixed(2)} interp="Stable across illustrative responses" />
+                                <Row metric="Spearman ρ" value={avgSpearman.toFixed(2)} interp="Rank alignment across configurations" />
+                                <Row metric="MAE" value={avgMae.toFixed(2)} interp="Average absolute score difference (1-5 scale)" />
+                                <Row metric="Decision Agreement" value={`${Math.round(avgAgreement)}%`} interp="BUY/CONSIDER/REJECT agreement" />
+                                <Row metric="Stability" value={avgStability.toFixed(2)} interp="1 − normalized MAE across illustrative responses" />
                             </tbody>
                         </table>
                         <p className="text-xs text-charcoal/50 mt-4 leading-relaxed">
                             These values demonstrate how the system would report calibration after real human validation data are collected.
+                            Computed from {results.length} configuration(s) with ≥{MIN_RESPONSES_FOR_CALIBRATION} respondents each.
                         </p>
                     </Card>
                 </>
