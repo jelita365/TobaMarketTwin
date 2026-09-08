@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F7F9F7;
+  --foreground: #1F2937;
+
+  --color-navy: #0F2A44;
+  --color-lakeblue: #176B87;
+  --color-teal: #1F7A72;
+  --color-green: #4F9D69;
+  --color-sage: #DDEDE2;
+  --color-offwhite: #F7F9F7;
+  --color-charcoal: #1F2937;
+  --color-gold: #D9A441;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy: var(--color-navy);
+  --color-lakeblue: var(--color-lakeblue);
+  --color-teal: var(--color-teal);
+  --color-green: var(--color-green);
+  --color-sage: var(--color-sage);
+  --color-offwhite: var(--color-offwhite);
+  --color-charcoal: var(--color-charcoal);
+  --color-gold: var(--color-gold);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+.gorga-divider {
+  height: 6px;
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--color-gold) 0px,
+    var(--color-gold) 2px,
+    transparent 2px,
+    transparent 10px
+  );
+  opacity: 0.5;
+}
+
+.wave-motif {
+  background-image: radial-gradient(circle at 20% 40%, rgba(23, 107, 135, 0.08) 0, transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(31, 122, 114, 0.06) 0, transparent 40%);
+}
