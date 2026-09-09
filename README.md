@@ -31,13 +31,14 @@ Each feature keeps domain logic, application use cases, and infrastructure adapt
 
 ## Run with Docker Compose
 
-Production (recommended):
+Copy the env file, then start the stack. The app listens on port 3000 inside the container; the host port comes from `EXPOSE_PORT` in `.env`.
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Then open [http://localhost:3000](http://localhost:3000) (or the host port you set in `.env`).
 
 ## Run locally without Docker
 
