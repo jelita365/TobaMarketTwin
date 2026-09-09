@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TobaMarketTwin
 
-## Getting Started
+AI-assisted, human-calibrated Customer Twins for screening sustainable product concepts for Toba MSMEs.
 
-First, run the development server:
+The codebase follows **feature-based Clean Architecture**: domain rules live in features, the Next.js App Router is a thin presentation layer, and Docker Compose is the supported way to run the app.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Architecture
+
+```
+src/
+  app/                         # Next.js routes (presentation)
+  core/store/                  # composition root + local persistence
+  features/                    # vertical slices
+    configurations/
+    constraints/
+    customer-twin/
+    sustainability/
+    human-validation/
+    calibration/
+    decision/
+    experiments/
+    personas/
+    evidence/
+  shared/
+    domain/                    # shared types and product attributes
+    lib/                       # formatting and math helpers
+    ui/                        # reusable UI primitives
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Each feature keeps domain logic, application use cases, and infrastructure adapters separate. Features expose a public `index.ts` so pages never reach into internals.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Run with Docker Compose
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Production (recommended):
 
-## Learn More
+```bash
+docker compose up --build
+```
 
-To learn more about Next.js, take a look at the following resources:
+Then open [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Run locally without Docker
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm ci
+npm run dev
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3000](http://localhost:3000).
