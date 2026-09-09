@@ -12,3 +12,13 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
     restart: unless-stopped
+    networks:
+      - delcom-external-network
+
+networks:
+  delcom-external-network:
+    external: true
+    ipam:
+      config:
+        - subnet: 10.33.0.0/16
+          gateway: 10.33.0.1
