@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: external-toba-market-twin
+    ports:
+      - "${EXPOSE_PORT}:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    restart: unless-stopped
+    networks:
+      - delcom-external-network
+
+networks:
+  delcom-external-network:
+    external: true
+    ipam:
+      config:
+        - subnet: 10.33.0.0/16
+          gateway: 10.33.0.1
