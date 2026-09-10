@@ -12,7 +12,7 @@ export default function ValidationPage() {
     const rows = experiments.flatMap((exp) =>
         getConfigurations(exp.id)
             .filter((c) => c.humanScoreSummary)
-            .map((c) => ({ exp, config: c, evals: getHumanEvaluations(c.id) }))
+            .map((c) => ({ exp, config: c, evals: getHumanEvaluations(exp.id, c.id) }))
     );
 
     return (
@@ -40,7 +40,7 @@ export default function ValidationPage() {
 
             <div className="space-y-3">
                 {rows.map(({ exp, config }) => (
-                    <Link key={config.id} href={`/experiments/${exp.id}/human-validation`}>
+                    <Link key={`${exp.id}:${config.id}`} href={`/experiments/${exp.id}/human-validation`}>
                         <Card className="hover:border-lakeblue/40 transition">
                             <div className="flex items-center justify-between gap-4 flex-wrap">
                                 <div>

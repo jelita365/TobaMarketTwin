@@ -16,7 +16,6 @@ export interface ConfigOption {
     designs: string[];
     prices: number[];
     storytelling: string[];
-    languages: string[];
 }
 
 export interface Experiment {
@@ -73,7 +72,6 @@ export interface ProductConfiguration {
     design: string;
     price: number;
     storytelling: string;
-    language: string;
     tags: string[];
     status: 'Generated' | 'Screened' | 'Shortlisted' | 'Validated' | 'Recommended' | 'Rejected';
     aiEvaluation?: AIEvaluation;

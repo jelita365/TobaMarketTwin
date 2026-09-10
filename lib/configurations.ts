@@ -7,13 +7,11 @@ const CULTURAL_DESIGNS = ['Batak Gorga', 'Modern Ulos'];
 function tagsFor(cfg: {
     material: string;
     design: string;
-    language: string;
     storytelling: string;
 }): string[] {
     const tags: string[] = [];
     if (SUSTAINABLE_MATERIALS.includes(cfg.material)) tags.push('Sustainable Material');
     if (CULTURAL_DESIGNS.includes(cfg.design)) tags.push('Cultural Identity');
-    if (cfg.language.includes('+')) tags.push('Bilingual');
     if (cfg.storytelling === 'Cultural Story') tags.push('Cultural Story');
     return tags;
 }
@@ -30,22 +28,19 @@ export function generateConfigurations(
         for (const design of options.designs) {
             for (const price of options.prices) {
                 for (const storytelling of options.storytelling) {
-                    for (const language of options.languages) {
-                        index += 1;
-                        const id = `CFG-${String(index).padStart(3, '0')}`;
-                        result.push({
-                            id,
-                            experimentId,
-                            index,
-                            material,
-                            design,
-                            price,
-                            storytelling,
-                            language,
-                            tags: tagsFor({ material, design, language, storytelling }),
-                            status: 'Generated',
-                        });
-                    }
+                    index += 1;
+                    const id = `CFG-${String(index).padStart(3, '0')}`;
+                    result.push({
+                        id,
+                        experimentId,
+                        index,
+                        material,
+                        design,
+                        price,
+                        storytelling,
+                        tags: tagsFor({ material, design, storytelling }),
+                        status: 'Generated',
+                    });
                 }
             }
         }
@@ -59,8 +54,7 @@ export function totalCombinations(options: ConfigOption): number {
         options.materials.length *
         options.designs.length *
         options.prices.length *
-        options.storytelling.length *
-        options.languages.length
+        options.storytelling.length
     );
 }
 

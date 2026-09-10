@@ -10,14 +10,20 @@ import { generateHumanEvaluations, summarizeHumanEvaluations } from './humanEval
 import { DEFAULT_WEIGHTS } from './decision';
 import { DEFAULT_CONSTRAINTS } from './constraints';
 
-const STORAGE_KEY = 'tobamarkettwin.v2';
+const STORAGE_KEY = 'tobamarkettwin.v5';
 
 interface StoreState {
     experiments: Experiment[];
     configurations: Record<string, ProductConfiguration[]>; // experimentId -> configs
-    humanEvaluations: Record<string, HumanEvaluation[]>; // configurationId -> evaluations
+    humanEvaluations: Record<string, HumanEvaluation[]>; // "experimentId:configurationId" -> evaluations
     weights: RecommendationWeights;
     constraints: Record<string, ConstraintSettings>; // experimentId -> constraints
+}
+
+// Configuration ids (e.g. "CFG-008") are only unique within their own experiment,
+// so human evaluations must be keyed by experiment + configuration together.
+function evalKey(experimentId: string, configId: string): string {
+    return `${experimentId}:${configId}`;
 }
 
 function buildSeedState(): StoreState {
@@ -44,7 +50,7 @@ function buildSeedState(): StoreState {
 
             for (const cfg of shortlisted) {
                 const evals = generateHumanEvaluations(cfg, 24);
-                humanEvaluations[cfg.id] = evals;
+                humanEvaluations[evalKey(exp.id, cfg.id)] = evals;
                 const summary = summarizeHumanEvaluations(evals);
                 const idx = configs.findIndex((c) => c.id === cfg.id);
                 if (idx >= 0) {
@@ -86,11 +92,13 @@ function saveState(state: StoreState) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-let memoryState: StoreState | null = null;
+// Seeded once, deterministically, so server and the first client render always agree —
+// localStorage is only consulted after mount (see useEffect below) to avoid hydration mismatches.
+let memoryState: StoreState = buildSeedState();
+let hydrated = false;
 const listeners = new Set<() => void>();
 
 function getState(): StoreState {
-    if (!memoryState) memoryState = loadState();
     return memoryState;
 }
 
@@ -106,8 +114,13 @@ export function useStore() {
     useEffect(() => {
         const listener = () => setTick((t) => t + 1);
         listeners.add(listener);
-        // Ensure client-loaded state (with seed data) triggers a render on mount.
-        setTick((t) => t + 1);
+
+        if (!hydrated) {
+            hydrated = true;
+            memoryState = loadState();
+            setTick((t) => t + 1);
+        }
+
         return () => {
             listeners.delete(listener);
         };
@@ -129,7 +142,7 @@ export function useStore() {
     );
 
     const getHumanEvaluations = useCallback(
-        (configId: string) => state.humanEvaluations[configId] ?? [],
+        (experimentId: string, configId: string) => state.humanEvaluations[evalKey(experimentId, configId)] ?? [],
         [state]
     );
 
@@ -206,7 +219,8 @@ export function useStore() {
     const submitHumanEvaluation = useCallback(
         (experimentId: string, configId: string, evaluation: HumanEvaluation) => {
             setState((prev) => {
-                const existing = prev.humanEvaluations[configId] ?? [];
+                const key = evalKey(experimentId, configId);
+                const existing = prev.humanEvaluations[key] ?? [];
                 const updatedEvals = [...existing, evaluation];
                 const summary = summarizeHumanEvaluations(updatedEvals);
 
@@ -216,7 +230,7 @@ export function useStore() {
 
                 const totalResponses = Object.values({
                     ...prev.humanEvaluations,
-                    [configId]: updatedEvals,
+                    [key]: updatedEvals,
                 }).reduce((sum, arr) => sum + arr.length, 0);
 
                 return {
@@ -227,7 +241,7 @@ export function useStore() {
                             : e
                     ),
                     configurations: { ...prev.configurations, [experimentId]: configs },
-                    humanEvaluations: { ...prev.humanEvaluations, [configId]: updatedEvals },
+                    humanEvaluations: { ...prev.humanEvaluations, [key]: updatedEvals },
                 };
             });
         },
@@ -237,7 +251,8 @@ export function useStore() {
     const importHumanEvaluations = useCallback(
         (experimentId: string, configId: string, rows: HumanEvaluation[]) => {
             setState((prev) => {
-                const existing = prev.humanEvaluations[configId] ?? [];
+                const key = evalKey(experimentId, configId);
+                const existing = prev.humanEvaluations[key] ?? [];
                 const updatedEvals = [...existing, ...rows];
                 const summary = summarizeHumanEvaluations(updatedEvals);
 
@@ -247,7 +262,7 @@ export function useStore() {
 
                 const totalResponses = Object.values({
                     ...prev.humanEvaluations,
-                    [configId]: updatedEvals,
+                    [key]: updatedEvals,
                 }).reduce((sum, arr) => sum + arr.length, 0);
 
                 return {
@@ -258,7 +273,7 @@ export function useStore() {
                             : e
                     ),
                     configurations: { ...prev.configurations, [experimentId]: configs },
-                    humanEvaluations: { ...prev.humanEvaluations, [configId]: updatedEvals },
+                    humanEvaluations: { ...prev.humanEvaluations, [key]: updatedEvals },
                 };
             });
         },
@@ -277,7 +292,7 @@ export function useStore() {
             return {
                 ...prev,
                 configurations: { ...prev.configurations, [experimentId]: configs },
-                humanEvaluations: { ...prev.humanEvaluations, [configId]: evals },
+                humanEvaluations: { ...prev.humanEvaluations, [evalKey(experimentId, configId)]: evals },
             };
         });
     }, []);

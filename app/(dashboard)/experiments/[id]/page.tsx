@@ -80,7 +80,6 @@ export default function ExperimentDetailPage({ params }: PageProps<'/experiments
                     <OptionGroup label="Design" items={experiment.options.designs} />
                     <OptionGroup label="Price" items={experiment.options.prices.map(formatRupiah)} />
                     <OptionGroup label="Storytelling" items={experiment.options.storytelling} />
-                    <OptionGroup label="Language" items={experiment.options.languages} />
                 </div>
             </Card>
 

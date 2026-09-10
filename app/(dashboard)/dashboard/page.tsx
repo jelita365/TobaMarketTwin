@@ -5,26 +5,35 @@ import { Card, CardHeader } from '@/components/Card';
 import { DemoLabel } from '@/components/DemoLabel';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Funnel } from '@/components/Funnel';
-import { useStore, MAIN_EXPERIMENT_ID } from '@/lib/store';
+import { useStore } from '@/lib/store';
 import { applyConstraints } from '@/lib/constraints';
 import { MIN_RESPONSES_FOR_CALIBRATION } from '@/types';
 
 export default function DashboardPage() {
     const { experiments, getConfigurations, getConstraints, getHumanEvaluations } = useStore();
 
-    const main = experiments.find((e) => e.id === MAIN_EXPERIMENT_ID) ?? experiments[0];
-    const configs = main ? getConfigurations(main.id) : [];
-    const constraints = main ? getConstraints(main.id) : null;
-    const feasible = constraints ? applyConstraints(configs, constraints) : configs;
-    const shortlisted = configs.filter((c) => c.status === 'Shortlisted' || c.status === 'Validated');
-    const humanResponseCount = configs.reduce((sum, c) => sum + getHumanEvaluations(c.id).length, 0);
-    const calibrationEligible = configs.filter((c) => getHumanEvaluations(c.id).length >= MIN_RESPONSES_FOR_CALIBRATION).length;
+    // Aggregate across ALL experiments, not just one — the dashboard represents the whole
+    // portfolio, while per-experiment detail (e.g. the 108-config breakdown) lives on each
+    // experiment's own page.
+    const allRows = experiments.flatMap((exp) => getConfigurations(exp.id).map((config) => ({ exp, config })));
+    const allConfigs = allRows.map((r) => r.config);
+    const feasibleByExperiment = experiments.map((exp) => {
+        const configs = getConfigurations(exp.id);
+        const constraints = getConstraints(exp.id);
+        return applyConstraints(configs, constraints);
+    });
+    const feasibleCount = feasibleByExperiment.reduce((sum, f) => sum + f.length, 0);
+    const shortlisted = allConfigs.filter((c) => c.status === 'Shortlisted' || c.status === 'Validated');
+    const humanResponseCount = allRows.reduce((sum, { exp, config }) => sum + getHumanEvaluations(exp.id, config.id).length, 0);
+    const calibrationEligible = allRows.filter(({ exp, config }) => getHumanEvaluations(exp.id, config.id).length >= MIN_RESPONSES_FOR_CALIBRATION).length;
     const calibrationStatus = calibrationEligible >= 2 ? 'Available' : 'Pending';
-    const priorityConcepts = configs.filter((c) => c.aiEvaluation && c.sustainability).length > 0 ? Math.min(3, shortlisted.length) : 0;
+    const priorityConcepts = allConfigs.filter((c) => c.aiEvaluation && c.sustainability).length > 0 ? Math.min(3, shortlisted.length) : 0;
+
+    const totalConfigurations = allConfigs.length || experiments.reduce((sum, e) => sum + e.totalConfigurations, 0);
 
     const kpis = [
-        { label: 'Configurations', value: configs.length || main?.totalConfigurations || 0 },
-        { label: 'Feasible (Constraints)', value: feasible.length },
+        { label: 'Configurations', value: totalConfigurations },
+        { label: 'Feasible (Constraints)', value: feasibleCount },
         { label: 'Human Validation', value: humanResponseCount > 0 ? `${humanResponseCount} Responses` : 'Not Available' },
         { label: 'Calibration', value: calibrationStatus },
         { label: 'Priority Concepts', value: priorityConcepts },
@@ -87,13 +96,13 @@ export default function DashboardPage() {
             <Card>
                 <CardHeader
                     title="Decision Pipeline"
-                    subtitle="Uji lebih banyak konsep secara virtual sebelum memilih konsep yang layak divalidasi di dunia nyata."
+                    subtitle="Uji lebih banyak konsep secara virtual sebelum memilih konsep yang layak divalidasi di dunia nyata, di seluruh eksperimen aktif."
                     action={<DemoLabel kind="demo" />}
                 />
                 <Funnel
                     steps={[
-                        { label: 'Concepts', value: configs.length || main?.totalConfigurations || 0 },
-                        { label: 'Constraint Filter', value: feasible.length },
+                        { label: 'Concepts', value: totalConfigurations },
+                        { label: 'Constraint Filter', value: feasibleCount },
                         { label: 'Customer Twin', value: '→' },
                         { label: 'Human Validation', value: humanResponseCount },
                         { label: 'Calibration', value: calibrationStatus },

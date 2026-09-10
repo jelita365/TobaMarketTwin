@@ -50,7 +50,7 @@ export default function HumanValidationPage({ params }: PageProps<'/experiments/
             ) : (
                 <div className="space-y-3">
                     {shortlisted.map((c) => {
-                        const evals = getHumanEvaluations(c.id);
+                        const evals = getHumanEvaluations(id, c.id);
                         return (
                             <Card key={c.id}>
                                 <div className="flex items-start justify-between gap-4 flex-wrap">

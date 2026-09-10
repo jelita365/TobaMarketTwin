@@ -19,7 +19,6 @@ export default function WhatIfPage({ params }: PageProps<'/experiments/[id]/what
               design: experiment.options.designs[0],
               price: experiment.options.prices[0],
               storytelling: experiment.options.storytelling[0],
-              language: experiment.options.languages[0],
           }
         : null;
 
@@ -65,7 +64,6 @@ export default function WhatIfPage({ params }: PageProps<'/experiments/[id]/what
                             display={(v) => formatRupiah(Number(v))}
                         />
                         <SelectField label="Storytelling" value={input.storytelling} options={experiment.options.storytelling} onChange={(v) => handleChange({ storytelling: v })} />
-                        <SelectField label="Language" value={input.language} options={experiment.options.languages} onChange={(v) => handleChange({ language: v })} />
                     </div>
                 </Card>
 

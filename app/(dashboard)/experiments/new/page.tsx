@@ -11,7 +11,6 @@ const DEFAULT_OPTIONS = {
     designs: ['Lake Toba Minimal', 'Batak Gorga', 'Modern Ulos'],
     prices: [45000, 50000, 55000],
     storytelling: ['Short Product Story', 'Cultural Story'],
-    languages: ['Indonesian', 'Indonesian + English'],
 };
 
 export default function NewExperimentPage() {
@@ -27,8 +26,7 @@ export default function NewExperimentPage() {
         DEFAULT_OPTIONS.materials.length *
         DEFAULT_OPTIONS.designs.length *
         DEFAULT_OPTIONS.prices.length *
-        DEFAULT_OPTIONS.storytelling.length *
-        DEFAULT_OPTIONS.languages.length;
+        DEFAULT_OPTIONS.storytelling.length;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -100,7 +98,7 @@ export default function NewExperimentPage() {
                     </Field>
 
                     <div className="rounded-xl bg-sage/40 border border-navy/10 px-4 py-3 text-xs text-charcoal/70">
-                        Default configuration options (material × design × price × storytelling × language) will generate{' '}
+                        Default configuration options (material × design × price × storytelling) will generate{' '}
                         <span className="font-bold text-navy">{totalCombos} configurations</span>. You can adjust options after creating the experiment.
                     </div>
 

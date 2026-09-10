@@ -36,7 +36,7 @@ export default function ConfigurationsPage({ params }: PageProps<'/experiments/[
                 <div>
                     <h1 className="text-2xl font-bold text-navy tracking-tight">Product Configurations</h1>
                     <p className="text-sm text-charcoal/60 mt-1">
-                        Material × Design × Price × Storytelling × Language, generated programmatically.
+                        Material × Design × Price × Storytelling, generated programmatically.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">

@@ -8,7 +8,6 @@ export interface WhatIfInput {
     design: string;
     price: number;
     storytelling: string;
-    language: string;
 }
 
 export interface WhatIfResult {
@@ -33,7 +32,6 @@ export function evaluateWhatIf(input: WhatIfInput, weights: RecommendationWeight
         design: input.design,
         price: input.price,
         storytelling: input.storytelling,
-        language: input.language,
         tags: [],
         status: 'Generated',
     };
@@ -52,5 +50,5 @@ export function evaluateWhatIf(input: WhatIfInput, weights: RecommendationWeight
 }
 
 function hashInput(input: WhatIfInput): string {
-    return [input.material, input.design, input.price, input.storytelling, input.language].join('|');
+    return [input.material, input.design, input.price, input.storytelling].join('|');
 }

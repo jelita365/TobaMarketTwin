@@ -22,7 +22,7 @@ export default function CalibrationPage({ params }: PageProps<'/experiments/[id]
     const entries = configs.map((c) => ({
         configurationId: c.id,
         aiEvaluation: c.aiEvaluation!,
-        humanEvaluations: getHumanEvaluations(c.id),
+        humanEvaluations: getHumanEvaluations(id, c.id),
     }));
 
     const results = calculateCalibration(entries);

@@ -26,7 +26,6 @@ export function evaluateWithCustomerTwin(config: ProductConfiguration): AIEvalua
     let base = 3.0;
     if (SUSTAINABLE_MATERIALS.includes(config.material)) base += 0.5;
     if (CULTURAL_DESIGNS.includes(config.design)) base += 0.4;
-    if (config.language.includes('+')) base += 0.2;
     if (config.price >= 55000) base -= 0.3;
     else if (config.price <= 45000) base += 0.1;
     if (config.storytelling === 'Cultural Story') base += 0.2;
@@ -64,7 +63,7 @@ export function evaluateWithCustomerTwin(config: ProductConfiguration): AIEvalua
     else if (customerAcceptance < 3.0) decision = 'REJECT';
 
     const rationale = buildRationale(config, customerAcceptance);
-    const concern = buildConcern(config, priceAcceptance);
+    const concern = buildConcern(priceAcceptance);
     const evidenceSufficiency = customerAcceptance >= 4 || customerAcceptance < 2.5 ? 'MEDIUM' : 'LOW';
 
     return {
@@ -92,12 +91,9 @@ function buildRationale(config: ProductConfiguration, score: number): string {
     return `Simulated appeal is limited, likely due to price level or weaker cultural signal.`;
 }
 
-function buildConcern(config: ProductConfiguration, priceAcceptance: number): string {
+function buildConcern(priceAcceptance: number): string {
     if (priceAcceptance < 3) {
         return 'Price may reduce acceptance among price-sensitive buyers.';
-    }
-    if (!config.language.includes('+')) {
-        return 'Single-language information may limit appeal to international tourists.';
     }
     return 'Material cost may require supplier verification before production.';
 }
